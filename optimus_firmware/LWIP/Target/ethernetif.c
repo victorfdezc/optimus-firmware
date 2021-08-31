@@ -96,35 +96,21 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* ethHandle)
     /* Enable Peripheral clock */
     __HAL_RCC_ETH_CLK_ENABLE();
 
-    __HAL_RCC_GPIOE_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     /**ETH GPIO Configuration
-    PE2     ------> ETH_TXD3
     PC1     ------> ETH_MDC
-    PC2     ------> ETH_TXD2
-    PC3     ------> ETH_TX_CLK
-    PA1     ------> ETH_RX_CLK
+    PA1     ------> ETH_REF_CLK
     PA2     ------> ETH_MDIO
-    PA7     ------> ETH_RX_DV
+    PA7     ------> ETH_CRS_DV
     PC4     ------> ETH_RXD0
     PC5     ------> ETH_RXD1
-    PB0     ------> ETH_RXD2
-    PB1     ------> ETH_RXD3
     PB11     ------> ETH_TX_EN
     PB12     ------> ETH_TXD0
     PB13     ------> ETH_TXD1
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_2;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
-    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4
-                          |GPIO_PIN_5;
+    GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -138,8 +124,7 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* ethHandle)
     GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_11|GPIO_PIN_12
-                          |GPIO_PIN_13;
+    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -166,30 +151,21 @@ void HAL_ETH_MspDeInit(ETH_HandleTypeDef* ethHandle)
     __HAL_RCC_ETH_CLK_DISABLE();
 
     /**ETH GPIO Configuration
-    PE2     ------> ETH_TXD3
     PC1     ------> ETH_MDC
-    PC2     ------> ETH_TXD2
-    PC3     ------> ETH_TX_CLK
-    PA1     ------> ETH_RX_CLK
+    PA1     ------> ETH_REF_CLK
     PA2     ------> ETH_MDIO
-    PA7     ------> ETH_RX_DV
+    PA7     ------> ETH_CRS_DV
     PC4     ------> ETH_RXD0
     PC5     ------> ETH_RXD1
-    PB0     ------> ETH_RXD2
-    PB1     ------> ETH_RXD3
     PB11     ------> ETH_TX_EN
     PB12     ------> ETH_TXD0
     PB13     ------> ETH_TXD1
     */
-    HAL_GPIO_DeInit(GPIOE, GPIO_PIN_2);
-
-    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4
-                          |GPIO_PIN_5);
+    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5);
 
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_7);
 
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_11|GPIO_PIN_12
-                          |GPIO_PIN_13);
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13);
 
     /* Peripheral interrupt Deinit*/
     HAL_NVIC_DisableIRQ(ETH_IRQn);
@@ -236,10 +212,10 @@ static void low_level_init(struct netif *netif)
 
    uint8_t MACAddr[6] ;
   heth.Instance = ETH;
-  heth.Init.AutoNegotiation = ETH_AUTONEGOTIATION_DISABLE;
+  heth.Init.AutoNegotiation = ETH_AUTONEGOTIATION_ENABLE;
   heth.Init.Speed = ETH_SPEED_100M;
   heth.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
-  heth.Init.PhyAddress = DP83848_PHY_ADDRESS;
+  heth.Init.PhyAddress = LAN8742A_PHY_ADDRESS;
   MACAddr[0] = 0x00;
   MACAddr[1] = 0x80;
   MACAddr[2] = 0xE1;
@@ -249,7 +225,7 @@ static void low_level_init(struct netif *netif)
   heth.Init.MACAddr = &MACAddr[0];
   heth.Init.RxMode = ETH_RXINTERRUPT_MODE;
   heth.Init.ChecksumMode = ETH_CHECKSUM_BY_HARDWARE;
-  heth.Init.MediaInterface = ETH_MEDIA_INTERFACE_MII;
+  heth.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
 
   /* USER CODE BEGIN MACADDRESS */
 
@@ -310,22 +286,15 @@ static void low_level_init(struct netif *netif)
 
 /* USER CODE END PHY_PRE_CONFIG */
 
-  /**** Configure PHY to generate an interrupt when Eth Link state changes ****/
   /* Read Register Configuration */
-  HAL_ETH_ReadPHYRegister(&heth, PHY_MICR, &regvalue);
-
-  regvalue |= (PHY_MICR_INT_EN | PHY_MICR_INT_OE);
-
-  /* Enable Interrupts */
-  HAL_ETH_WritePHYRegister(&heth, PHY_MICR, regvalue );
-
-  /* Read Register Configuration */
-  HAL_ETH_ReadPHYRegister(&heth, PHY_MISR, &regvalue);
-
-  regvalue |= PHY_MISR_LINK_INT_EN;
+  HAL_ETH_ReadPHYRegister(&heth, PHY_ISFR, &regvalue);
+  regvalue |= (PHY_ISFR_INT4);
 
   /* Enable Interrupt on change of link status */
-  HAL_ETH_WritePHYRegister(&heth, PHY_MISR, regvalue);
+  HAL_ETH_WritePHYRegister(&heth, PHY_ISFR , regvalue );
+
+  /* Read Register Configuration */
+  HAL_ETH_ReadPHYRegister(&heth, PHY_ISFR , &regvalue);
 
 /* USER CODE BEGIN PHY_POST_CONFIG */
 
