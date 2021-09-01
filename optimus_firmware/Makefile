@@ -56,7 +56,16 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c \
-Core/Src/system_stm32f4xx.c
+Core/Src/system_stm32f4xx.c \
+Middlewares/FreeRTOS-Kernel/croutine.c \
+Middlewares/FreeRTOS-Kernel/event_groups.c \
+Middlewares/FreeRTOS-Kernel/list.c \
+Middlewares/FreeRTOS-Kernel/queue.c \
+Middlewares/FreeRTOS-Kernel/stream_buffer.c \
+Middlewares/FreeRTOS-Kernel/tasks.c \
+Middlewares/FreeRTOS-Kernel/timers.c \
+Middlewares/FreeRTOS-Kernel/portable/MemMang/heap_4.c \
+Middlewares/FreeRTOS-Kernel/portable/GCC/ARM_CM4F/port.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -117,7 +126,9 @@ C_INCLUDES =  \
 -IDrivers/STM32F4xx_HAL_Driver/Inc \
 -IDrivers/STM32F4xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
--IDrivers/CMSIS/Include
+-IDrivers/CMSIS/Include \
+-IMiddlewares/FreeRTOS-Kernel/include \
+-IMiddlewares/FreeRTOS-Kernel/portable/GCC/ARM_CM4F
 
 
 # compile gcc flags
