@@ -56,12 +56,66 @@
 #define CMSIS_device_header "stm32f4xx.h"
 #endif /* CMSIS_device_header */
 
-#define configENABLE_FPU                         0
-#define configENABLE_MPU                         0
+#define configENABLE_FPU                         0 //No Floating-Point Unit
+#define configENABLE_MPU                         0 //No Memory Protection Unit
+
+/*If configSUPPORT_STATIC_ALLOCATION is set to 1 then the application writer must also 
+provide two callback functions: vApplicationGetIdleTaskMemory() to provide the memory 
+for use by the RTOS Idle task, and (if configUSE_TIMERS is set to 1) vApplicationGetTimerTaskMemory() 
+to provide memory for use by the RTOS Daemon/Timer Service task.
+Creating RTOS objects using statically allocated RAM has the benefit of providing the application 
+writer with more control*/
+#define configSUPPORT_STATIC_ALLOCATION          0
+/*From FreeRTOS V9.0.0 a heap memory manager is only required if configSUPPORT_DYNAMIC_ALLOCATION is 
+set to 1 in FreeRTOSConfig.h, or if configSUPPORT_DYNAMIC_ALLOCATION is left undefined.
+FreeRTOS provides five example heap allocation schemes. The five schemes are named
+heap_1 to heap_5, and are implemented by the source files heap_1.c to heap_5.c
+respectively. */
+#define configSUPPORT_DYNAMIC_ALLOCATION         1
+/* Sometimes the FreeRTOSConfig.h settings only allow a task to be created using
+ * dynamically allocated RAM, in which case when any task is deleted it is known
+ * that both the task's stack and TCB need to be freed.  Sometimes the
+ * FreeRTOSConfig.h settings only allow a task to be created using statically
+ * allocated RAM, in which case when any task is deleted it is known that neither
+ * the task's stack or TCB should be freed.  Sometimes the FreeRTOSConfig.h
+ * settings allow a task to be created using either statically or dynamically
+ * allocated RAM, in which case a member of the TCB is used to record whether the
+ * stack and/or TCB were allocated statically or dynamically, so when a task is
+ * deleted the RAM that was allocated dynamically is freed again and no attempt is
+ * made to free the RAM that was allocated statically.
+ * tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE is only true if it is possible for a
+ * task to be created using either statically or dynamically allocated RAM.  Note
+ * that if portUSING_MPU_WRAPPERS is 1 then a protected task can be created with
+ * a statically allocated stack and a dynamically allocated TCB.
+ *
+ * The following table lists various combinations of portUSING_MPU_WRAPPERS,
+ * configSUPPORT_DYNAMIC_ALLOCATION and configSUPPORT_STATIC_ALLOCATION and
+ * when it is possible to have both static and dynamic allocation:
+ *  +-----+---------+--------+-----------------------------+-----------------------------------+------------------+-----------+
+ * | MPU | Dynamic | Static |     Available Functions     |       Possible Allocations        | Both Dynamic and | Need Free |
+ * |     |         |        |                             |                                   | Static Possible  |           |
+ * +-----+---------+--------+-----------------------------+-----------------------------------+------------------+-----------+
+ * | 0   | 0       | 1      | xTaskCreateStatic           | TCB - Static, Stack - Static      | No               | No        |
+ * +-----|---------|--------|-----------------------------|-----------------------------------|------------------|-----------|
+ * | 0   | 1       | 0      | xTaskCreate                 | TCB - Dynamic, Stack - Dynamic    | No               | Yes       |
+ * +-----|---------|--------|-----------------------------|-----------------------------------|------------------|-----------|
+ * | 0   | 1       | 1      | xTaskCreate,                | 1. TCB - Dynamic, Stack - Dynamic | Yes              | Yes       |
+ * |     |         |        | xTaskCreateStatic           | 2. TCB - Static, Stack - Static   |                  |           |
+ * +-----|---------|--------|-----------------------------|-----------------------------------|------------------|-----------|
+ * | 1   | 0       | 1      | xTaskCreateStatic,          | TCB - Static, Stack - Static      | No               | No        |
+ * |     |         |        | xTaskCreateRestrictedStatic |                                   |                  |           |
+ * +-----|---------|--------|-----------------------------|-----------------------------------|------------------|-----------|
+ * | 1   | 1       | 0      | xTaskCreate,                | 1. TCB - Dynamic, Stack - Dynamic | Yes              | Yes       |
+ * |     |         |        | xTaskCreateRestricted       | 2. TCB - Dynamic, Stack - Static  |                  |           |
+ * +-----|---------|--------|-----------------------------|-----------------------------------|------------------|-----------|
+ * | 1   | 1       | 1      | xTaskCreate,                | 1. TCB - Dynamic, Stack - Dynamic | Yes              | Yes       |
+ * |     |         |        | xTaskCreateStatic,          | 2. TCB - Dynamic, Stack - Static  |                  |           |
+ * |     |         |        | xTaskCreateRestricted,      | 3. TCB - Static, Stack - Static   |                  |           |
+ * |     |         |        | xTaskCreateRestrictedStatic |                                   |                  |           |
+ * +-----+---------+--------+-----------------------------+-----------------------------------+------------------+-----------+
+ */
 
 #define configUSE_PREEMPTION                     1
-#define configSUPPORT_STATIC_ALLOCATION          1
-#define configSUPPORT_DYNAMIC_ALLOCATION         1
 #define configUSE_IDLE_HOOK                      0
 #define configUSE_TICK_HOOK                      0
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
@@ -93,13 +147,6 @@
 #define configTIMER_QUEUE_LENGTH                 10
 #define configTIMER_TASK_STACK_DEPTH             256
 
-/* CMSIS-RTOS V2 flags */
-#define configUSE_OS2_THREAD_SUSPEND_RESUME  1
-#define configUSE_OS2_THREAD_ENUMERATE       1
-#define configUSE_OS2_EVENTFLAGS_FROM_ISR    1
-#define configUSE_OS2_THREAD_FLAGS           1
-#define configUSE_OS2_TIMER                  1
-#define configUSE_OS2_MUTEX                  1
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
@@ -117,11 +164,8 @@ to exclude the API function. */
 #define INCLUDE_xTaskGetCurrentTaskHandle    1
 #define INCLUDE_eTaskGetState                1
 
-/*
- * The CMSIS-RTOS V2 FreeRTOS wrapper is dependent on the heap implementation used
- * by the application thus the correct define need to be enabled below
- */
-#define USE_FreeRTOS_HEAP_4
+
+/*TO CHECK: https://github.com/FreeRTOS/FreeRTOS/blob/main/FreeRTOS/Demo/CORTEX_M4F_Infineon_XMC4000_GCC_Dave/FreeRTOSConfig.h*/
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS
@@ -150,21 +194,6 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */
-/* USER CODE BEGIN 1 */
 #define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );}
-/* USER CODE END 1 */
-
-/* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
-standard names. */
-#define vPortSVCHandler    SVC_Handler
-#define xPortPendSVHandler PendSV_Handler
-
-/* IMPORTANT: After 10.3.1 update, Systick_Handler comes from NVIC (if SYS timebase = systick), otherwise from cmsis_os2.c */
-
-#define USE_CUSTOM_SYSTICK_HANDLER_IMPLEMENTATION 0
-
-/* USER CODE BEGIN Defines */
-/* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
-/* USER CODE END Defines */
 
 #endif /* FREERTOS_CONFIG_H */
