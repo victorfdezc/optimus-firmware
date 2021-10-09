@@ -71,7 +71,7 @@ void vTask1( void *pvParameters )
   for( ;; )
   {
     /* Print out the name of this task. */
-    //vPrintString( pcTaskName );
+    HAL_UART_Transmit(&huart1, pcTaskName, sizeof(pcTaskName), HAL_MAX_DELAY);
     /* Delay for a period. */
     for( ul = 0; ul < 1000; ul++ )
     {
@@ -90,7 +90,7 @@ void vTask2( void *pvParameters )
   for( ;; )
   {
     /* Print out the name of this task. */
-    //vPrintString( pcTaskName );
+    HAL_UART_Transmit(&huart1, pcTaskName, sizeof(pcTaskName), HAL_MAX_DELAY);
     /* Delay for a period. */
     for( ul = 0; ul < 500; ul++ )
     {
