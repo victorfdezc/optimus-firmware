@@ -9,16 +9,17 @@
   * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
   *
   ******************************************************************************
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+// #include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -26,7 +27,7 @@
 #include "task.h"
 #include "timers.h"
 #include "semphr.h"
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,19 +45,27 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ETH_HandleTypeDef heth;
-
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_tx;
 
+/* Definitions for defaultTask */
+// osThreadId_t defaultTaskHandle;
+// const osThreadAttr_t defaultTask_attributes = {
+//   .name = "defaultTask",
+//   .stack_size = 128 * 4,
+//   // .priority = (osPriority_t) osPriorityNormal,
+// };
 /* USER CODE BEGIN PV */
-
+static SemaphoreHandle_t mutex;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_ETH_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_DMA_Init(void);
+void StartDefaultTask(void *argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -65,39 +74,59 @@ static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN 0 */
 void vTask1( void *pvParameters )
 {
-  const char *pcTaskName = "Task 1 is running\r\n";
-  volatile uint32_t ul; /* volatile to ensure ul is not optimized away. */
+  const char *pcTaskName = "Task 1";
+  char buf[50];
+  uint32_t ul=0; /* volatile to ensure ul is not optimized away. */
   /* As per most tasks, this task is implemented in an infinite loop. */
   for( ;; )
   {
+    sprintf(buf,"%s: %d \r\n",pcTaskName,ul);
+    // Take the mutex
+    xSemaphoreTake(mutex, portMAX_DELAY);
     /* Print out the name of this task. */
-    HAL_UART_Transmit(&huart1, pcTaskName, sizeof(pcTaskName), HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, buf, sizeof(char)*strlen(buf), HAL_MAX_DELAY);
+    // HAL_UART_Transmit_DMA(&huart1, pcTaskName, sizeof(pcTaskName)); //Non-blocking mode with DMA
+    // Release the mutex so that the creating function can finish
+    xSemaphoreGive(mutex);
+    vTaskDelay(1000);
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+    ul++;
     /* Delay for a period. */
-    for( ul = 0; ul < 1000; ul++ )
-    {
-      /* This loop is just a very crude delay implementation. There is
-      nothing to do in here. Later examples will replace this crude
-      loop with a proper delay/sleep function. */
-    }
+    // for( ul = 0; ul < 1000; ul++ )
+    // {
+    //   /* This loop is just a very crude delay implementation. There is
+    //   nothing to do in here. Later examples will replace this crude
+    //   loop with a proper delay/sleep function. */
+    // }
   }
 }
 
 void vTask2( void *pvParameters )
 {
-  const char *pcTaskName = "Task 2 is running\r\n";
-  volatile uint32_t ul; /* volatile to ensure ul is not optimized away. */
+  const char *pcTaskName = "Task 2";
+  char buf[50];
+  uint32_t ul=0; /* volatile to ensure ul is not optimized away. */
   /* As per most tasks, this task is implemented in an infinite loop. */
   for( ;; )
   {
+    sprintf(buf,"%s: %d \r\n",pcTaskName,ul);
+    // Take the mutex
+    xSemaphoreTake(mutex, portMAX_DELAY);
     /* Print out the name of this task. */
-    HAL_UART_Transmit(&huart1, pcTaskName, sizeof(pcTaskName), HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, buf, sizeof(char)*strlen(buf), HAL_MAX_DELAY);
+    // Release the mutex so that the creating function can finish
+    xSemaphoreGive(mutex);
+    // HAL_UART_Transmit_DMA(&huart1, pcTaskName, sizeof(pcTaskName)); //Non-blocking mode with DMA
+    vTaskDelay(2000);
+    ul++;
+    // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     /* Delay for a period. */
-    for( ul = 0; ul < 500; ul++ )
-    {
-      /* This loop is just a very crude delay implementation. There is
-      nothing to do in here. Later examples will replace this crude
-      loop with a proper delay/sleep function. */
-    }
+    // for( ul = 0; ul < 500; ul++ )
+    // {
+    //   /* This loop is just a very crude delay implementation. There is
+    //   nothing to do in here. Later examples will replace this crude
+    //   loop with a proper delay/sleep function. */
+    // }
   }
 }
 /* USER CODE END 0 */
@@ -130,12 +159,79 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_ETH_Init();
   MX_USART1_UART_Init();
+  MX_DMA_Init();
   /* USER CODE BEGIN 2 */
-  /* Create one of the two tasks. Note that a real application should check
-  the return value of the xTaskCreate() call to ensure the task was created
-  successfully. */
+
+  /* USER CODE END 2 */
+
+  /* Init scheduler */
+  // osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  // defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  // osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  // HAL_Delay(1000);
+  // // vTaskDelay(1000);
+  // // for(int i=0;i<100000000;i++);
+  // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  // HAL_Delay(1000);
+  // // vTaskDelay(1000);
+  // // for(int i=0;i<100000000;i++);
+  // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  // HAL_Delay(1000);
+  // // vTaskDelay(1000);
+  // // for(int i=0;i<100000000;i++);
+  // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  // HAL_Delay(1000);
+  // // vTaskDelay(1000);
+  // // for(int i=0;i<100000000;i++);
+  // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  // HAL_Delay(1000);
+  // vTaskDelay(1000);
+  // for(int i=0;i<100000000;i++);
+
+  // Create mutex before starting tasks
+  mutex = xSemaphoreCreateMutex();
+  // Give the mutex
+  xSemaphoreGive(mutex);
+
+  char data[50] = {"Creating tasks...\r\n"};
+  // uint8_t datalen = strlen(data)+48; //suma "0" en ASCII para que se imprima correctamente
+  HAL_UART_Transmit(&huart1, &data, sizeof(char)*strlen(data), HAL_MAX_DELAY);
+
   xTaskCreate( vTask1, /* Pointer to the function that implements the task. */
               "Task 1",/* Text name for the task. This is to facilitate
               debugging only. */
@@ -147,17 +243,11 @@ int main(void)
   /* Create the other task in exactly the same way and at the same priority. */
   xTaskCreate( vTask2, "Task 2", 1000, NULL, 1, NULL );
   /* Start the scheduler so the tasks start executing. */
+
+  strcpy(data, "Starting Scheduler... \r\n");
+  HAL_UART_Transmit(&huart1, &data, sizeof(char)*strlen(data), HAL_MAX_DELAY);
   vTaskStartScheduler();
-
-  /* If all is well then main() will never reach here as the scheduler will
-  now be running the tasks. If main() does reach here then it is likely that
-  there was insufficient heap memory available for the idle task to be created.
-  Chapter 2 provides more information on heap memory management. */
-  for( ;; );
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+  
   while (1)
   {
     /* USER CODE END WHILE */
@@ -212,53 +302,6 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief ETH Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ETH_Init(void)
-{
-
-  /* USER CODE BEGIN ETH_Init 0 */
-
-  /* USER CODE END ETH_Init 0 */
-
-   static uint8_t MACAddr[6];
-
-  /* USER CODE BEGIN ETH_Init 1 */
-
-  /* USER CODE END ETH_Init 1 */
-  heth.Instance = ETH;
-  heth.Init.AutoNegotiation = ETH_AUTONEGOTIATION_ENABLE;
-  heth.Init.Speed = ETH_SPEED_100M;
-  heth.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
-  heth.Init.PhyAddress = LAN8742A_PHY_ADDRESS;
-  MACAddr[0] = 0x00;
-  MACAddr[1] = 0x80;
-  MACAddr[2] = 0xE1;
-  MACAddr[3] = 0x00;
-  MACAddr[4] = 0x00;
-  MACAddr[5] = 0x00;
-  heth.Init.MACAddr = &MACAddr[0];
-  heth.Init.RxMode = ETH_RXPOLLING_MODE;
-  heth.Init.ChecksumMode = ETH_CHECKSUM_BY_HARDWARE;
-  heth.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
-
-  /* USER CODE BEGIN MACADDRESS */
-
-  /* USER CODE END MACADDRESS */
-
-  if (HAL_ETH_Init(&heth) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ETH_Init 2 */
-
-  /* USER CODE END ETH_Init 2 */
-
-}
-
-/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -292,24 +335,67 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 }
 
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    vTaskDelay(1);
+  }
+  /* USER CODE END 5 */
+}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
