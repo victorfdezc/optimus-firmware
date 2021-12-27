@@ -19,3 +19,8 @@ Since Olimex-E407 has an ARM Cortex M4, the port used is [ARM_CM4F](https://gith
 
 ## FreeRTOS TCP/IP or LwIP
 It seems that LwIP doen't work well in STM32 and it's not hardware realted (see [1](https://community.st.com/s/question/0D50X0000BOtfhnSQB/how-to-make-ethernet-and-lwip-working-on-stm32) and [2](https://community.st.com/s/question/0D50X0000AhNBoWSQW/actually-working-stm32-ethernet-and-lwip-demonstration-firmware)). On the other hand, FreeRTOS has a TCP/IP implementation optimized for FreeRTOS and it's thread safe (some of its advanteges are explained [here](https://www.freertos.org/FreeRTOS_Support_Forum_Archive/November_2014/freertos_FreeRTOS_TCP_IP_stack_vs_lwIP_8324ceabj.html)). It will be studied the possibility of porting FreeRTOS TCP/IP to the Olimex board, instead of struggling with possible multiple problems which can appear by using LwIP.
+
+
+# TODOs
+- [] Fix ETH initialization (code freezes)
+- [x] Added custom FreeRTOS
