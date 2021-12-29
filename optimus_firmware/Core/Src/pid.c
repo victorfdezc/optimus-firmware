@@ -29,12 +29,12 @@ pid_t pid_create(pid_t pid, float* in, float* out, float* set, float kp, float k
 	pid_limits(pid, 0, 255);
 
 	// Set default sample time to 100 ms
-	pid->sampletime = 100 * (TICK_SECOND / 1000);
+	pid->sampletime = 100 / portTICK_PERIOD_MS;
 
 	pid_direction(pid, E_PID_DIRECT);
 	pid_tune(pid, kp, ki, kd);
 
-	pid->lasttime = tick_get() - pid->sampletime;
+	pid->lasttime = xTaskGetTickCount() - pid->sampletime;
 
 	return pid;
 }
@@ -42,7 +42,7 @@ pid_t pid_create(pid_t pid, float* in, float* out, float* set, float kp, float k
 bool pid_need_compute(pid_t pid)
 {
 	// Check if the PID period has elapsed
-	return(tick_get() - pid->lasttime >= pid->sampletime) ? true : false;
+	return(xTaskGetTickCount() - pid->lasttime >= pid->sampletime) ? true : false;
 }
 
 void pid_compute(pid_t pid)
@@ -73,7 +73,7 @@ void pid_compute(pid_t pid)
 	(*pid->output) = out;
 	// Keep track of some variables for next execution
 	pid->lastin = in;
-	pid->lasttime = tick_get();;
+	pid->lasttime = xTaskGetTickCount();;
 }
 
 void pid_tune(pid_t pid, float kp, float ki, float kd)
@@ -83,7 +83,7 @@ void pid_tune(pid_t pid, float kp, float ki, float kd)
 		return;
 	
 	//Compute sample time in seconds
-	float ssec = ((float) pid->sampletime) / ((float) TICK_SECOND);
+	float ssec = ((float) pid->sampletime) * ((float) portTICK_PERIOD_MS / 1000.0);
 
 	pid->Kp = kp;
 	pid->Ki = ki * ssec;
@@ -99,10 +99,10 @@ void pid_tune(pid_t pid, float kp, float ki, float kd)
 void pid_sample(pid_t pid, uint32_t time)
 {
 	if (time > 0) {
-		float ratio = (float) (time * (TICK_SECOND / 1000)) / (float) pid->sampletime;
+		float ratio = (float) (time * (1/portTICK_PERIOD_MS)) / (float) pid->sampletime;
 		pid->Ki *= ratio;
 		pid->Kd /= ratio;
-		pid->sampletime = time * (TICK_SECOND / 1000);
+		pid->sampletime = time / portTICK_PERIOD_MS;
 	}
 }
 
