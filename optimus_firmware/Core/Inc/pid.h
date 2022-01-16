@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "FreeRTOS.h"
+#include "semphr.h"
 
 /*-------------------------------------------------------------*/
 /*		Macros and definitions				*/
@@ -47,6 +48,8 @@ enum pid_control_directions {
  * posible using different structures for each controller
  */
 struct pid_controller {
+	// Mutex for accesing thread safe to PID variables:
+	SemaphoreHandle_t mutex;
 	// Input, output and setpoint
 	float * input; //!< Current Process Value
 	float * output; //!< Corrective Output from PID Controller
@@ -62,8 +65,8 @@ struct pid_controller {
 	float iterm; //!< Accumulator for integral term
 	float lastin; //!< Last input value for differential term
 	// Time related
-	uint32_t lasttime; //!< Stores the time when the control loop ran last time
-	uint32_t sampletime; //!< Defines the PID sample time
+	uint32_t lasttime; //!< Stores the time when the control loop ran last time in TICKS
+	uint32_t sampletime; //!< Defines the PID sample time in TICKS
 	// Operation mode
 	uint8_t automode; //!< Defines if the PID controller is enabled or disabled
 	enum pid_control_directions direction;
@@ -93,7 +96,7 @@ extern "C" {
 	 *
 	 * @return returns a pid_t controller handle
 	 */
-	pid_t pid_create(pid_t pid, float* in, float* out, float* set, float kp, float ki, float kd);
+	pid_t pid_create(pid_t pid, SemaphoreHandle_t mutex, float* in, float* out, float* set, float kp, float ki, float kd);
 
 	/**
 	 * @brief Check if PID loop needs to run

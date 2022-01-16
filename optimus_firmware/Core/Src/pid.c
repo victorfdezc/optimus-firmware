@@ -19,8 +19,9 @@
  */
 #include "pid.h"
 
-pid_t pid_create(pid_t pid, float* in, float* out, float* set, float kp, float ki, float kd)
+pid_t pid_create(pid_t pid, SemaphoreHandle_t mutex, float* in, float* out, float* set, float kp, float ki, float kd)
 {
+	pid->mutex = mutex;
 	pid->input = in;
 	pid->output = out;
 	pid->setpoint = set;
@@ -28,7 +29,7 @@ pid_t pid_create(pid_t pid, float* in, float* out, float* set, float kp, float k
 
 	pid_limits(pid, 0, 255);
 
-	// Set default sample time to 100 ms
+	// Set default sample time to 100 ms in TICKS
 	pid->sampletime = 100 / portTICK_PERIOD_MS;
 
 	pid_direction(pid, E_PID_DIRECT);

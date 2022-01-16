@@ -26,6 +26,7 @@
 #include "task.h"
 #include "timers.h"
 #include "semphr.h"
+#include "pid.h"
 
 /* USER CODE END Includes */
 
@@ -49,7 +50,30 @@ ETH_HandleTypeDef heth;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-static SemaphoreHandle_t mutex;
+
+static SemaphoreHandle_t mutex_dbg;
+static SemaphoreHandle_t mutex_in1;
+static SemaphoreHandle_t mutex_in2;
+
+// Structure to strore PID data and pointer to PID structure
+struct pid_controller ctrldata1;
+struct pid_controller ctrldata2;
+pid_t pid_controller1;
+pid_t pid_controller2;
+
+// Control loop input,output and setpoint variables
+float input1 = 0, output1 = 0;
+float setpoint1 = 15;
+// Control loop gains
+float kp1 = 2.5, ki1 = 1.0, kd1 = 1.0;
+
+// Control loop input,output and setpoint variables
+float input2 = 0, output2 = 0;
+float setpoint2 = 15;
+// Control loop gains
+float kp2 = 2.5, ki2 = 1.0, kd2 = 1.0;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,6 +87,34 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void pidTask( void *pvParameters )  ////////////////////////////////////////////////////////// https://github.com/geekfactory/PID
+/////////////////////////////////////// https://deepbluembedded.com/stm32-pwm-example-timer-pwm-mode-tutorial/
+{
+  pid_t pid_controller = (pid_t) pvParameters;
+  char dbg_msg[50];
+
+  // Set controler output limits from 0 to 200
+	pid_limits(pid_controller, 0, 200);
+	// Allow PID to compute and change output
+	pid_auto(pid_controller);
+
+  sprintf(dbg_msg, "Running PID Controller with ID");
+  xSemaphoreTake(mutex_dbg, portMAX_DELAY);
+  HAL_UART_Transmit(&huart1, dbg_msg, sizeof(char)*strlen(dbg_msg), HAL_MAX_DELAY);
+  xSemaphoreGive(mutex_dbg);
+
+  while(1)
+  {
+    // Read process feedback
+    // input = process_input();
+    // Compute new PID output value
+    pid_compute(pid_controller);
+    //Change actuator value
+    // process_output(output);
+  }
+}
+
+
 void vTask1( void *pvParameters )
 {
   const char *pcTaskName = "Task 1";
@@ -73,12 +125,12 @@ void vTask1( void *pvParameters )
   {
     sprintf(buf,"%s: %d \r\n",pcTaskName,ul);
     // Take the mutex
-    xSemaphoreTake(mutex, portMAX_DELAY);
+    xSemaphoreTake(mutex_dbg, portMAX_DELAY);
     /* Print out the name of this task. */
     HAL_UART_Transmit(&huart1, buf, sizeof(char)*strlen(buf), HAL_MAX_DELAY);
     // HAL_UART_Transmit_DMA(&huart1, pcTaskName, sizeof(pcTaskName)); //Non-blocking mode with DMA
     // Release the mutex
-    xSemaphoreGive(mutex);
+    xSemaphoreGive(mutex_dbg);
     vTaskDelay(1000);
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     ul++;
@@ -102,12 +154,12 @@ void vTask2( void *pvParameters )
   {
     sprintf(buf,"%s: %d \r\n",pcTaskName,ul);
     // Take the mutex
-    xSemaphoreTake(mutex, portMAX_DELAY);
+    xSemaphoreTake(mutex_dbg, portMAX_DELAY);
     /* Print out the name of this task. */
     HAL_UART_Transmit(&huart1, buf, sizeof(char)*strlen(buf), HAL_MAX_DELAY);
     // HAL_UART_Transmit_DMA(&huart1, pcTaskName, sizeof(pcTaskName)); //Non-blocking mode with DMA
     // Release the mutex
-    xSemaphoreGive(mutex);
+    xSemaphoreGive(mutex_dbg);
     vTaskDelay(2000);
     // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     ul++;
@@ -157,13 +209,21 @@ int main(void)
   /* TODO: fix Ethernet initialization */
 
   // Create mutex before starting tasks
-  mutex = xSemaphoreCreateMutex();
+  mutex_dbg = xSemaphoreCreateMutex();
+  mutex_in1 = xSemaphoreCreateMutex();
+  mutex_in2 = xSemaphoreCreateMutex();
   // Give the mutex
-  xSemaphoreGive(mutex);
+  xSemaphoreGive(mutex_dbg);
+  xSemaphoreGive(mutex_in1);
+  xSemaphoreGive(mutex_in2);
 
   char data[50] = {"Creating tasks...\r\n"};
   // uint8_t datalen = strlen(data)+48; //suma "0" en ASCII para que se imprima correctamente
   HAL_UART_Transmit(&huart1, &data, sizeof(char)*strlen(data), HAL_MAX_DELAY);
+
+  // Create both controllers, one for each task and wheel
+  pid_controller1 = pid_create(&ctrldata1, mutex_in1, &input1, &output1, &setpoint1, kp1, ki1, kd1);
+  pid_controller2 = pid_create(&ctrldata2, mutex_in2, &input2, &output2, &setpoint2, kp2, ki2, kd2);
 
   /* Create one of the two tasks. Note that a real application should check
   the return value of the xTaskCreate() call to ensure the task was created
