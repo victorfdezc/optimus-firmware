@@ -23,4 +23,5 @@ It seems that LwIP doen't work well in STM32 and it's not hardware realted (see 
 
 # TODOs
 - [] Fix ETH initialization (code freezes)
+- [x] Check Clock configuration to add both RTC and cristal oscillators (increase accuracy in system clock??)
 - [x] Added custom FreeRTOS
